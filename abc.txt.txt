@@ -1,1 +1,378 @@
-This is Bug Fix code 
+Form-edit-adresses
+
+<?php
+/**
+ * Edit address form
+ *
+ * This template can be overridden by copying it to yourtheme/woocommerce/myaccount/form-edit-address.php.
+ *
+ * HOWEVER, on occasion WooCommerce will need to update template files and you
+ * (the theme developer) will need to copy the new files to your theme to
+ * maintain compatibility. We try to do this as little as possible, but it does
+ * happen. When this occurs the version of the template file will be bumped and
+ * the readme will list any important changes.
+ *
+ * @see https://woocommerce.com/document/template-structure/
+ * @package WooCommerce\Templates
+ * @version 9.3.0
+ */
+
+defined('ABSPATH') || exit;
+
+$page_title = ('billing' === $load_address) ? esc_html__('Billing address', 'woocommerce') : esc_html__('Shipping address', 'woocommerce');
+
+do_action('woocommerce_before_edit_account_address_form'); ?>
+
+<?php if (!$load_address): ?>
+	<?php
+	$customer_id = get_current_user_id();
+
+	// Show Billing Address Section (Read Only / Standard)
+	$billing_address = wc_get_account_formatted_address('billing');
+	?>
+	<div class="u-columns woocommerce-Addresses col2-set addresses">
+		<div class="u-column1 col-1 woocommerce-Address">
+			<header class="woocommerce-Address-title title">
+				<h3><?php esc_html_e('Billing address', 'woocommerce'); ?></h3>
+			</header>
+			<address>
+				<?php echo $billing_address ? wp_kses_post($billing_address) : esc_html__('You have not set up this type of address yet.', 'woocommerce'); ?>
+			</address>
+		</div>
+	</div>
+
+	<?php if (!wc_ship_to_billing_address_only() && wc_shipping_enabled()): ?>
+
+		<hr class="wc-separator" />
+
+		<h3 style="margin: 20px 0;"><?php esc_html_e('Shipping Addresses', 'woocommerce'); ?></h3>
+
+		<?php
+		// 1. Current Default Shipping Address
+		$shipping_address = wc_get_account_formatted_address('shipping');
+		?>
+		<div class="shipping-addresses">
+
+			<div class="Address validation-address">
+				<header class="woocommerce-Address-title title">
+
+
+				</header>
+				<address> <span class="default-badge">
+						<?php esc_html_e('Default', 'woocommerce'); ?>
+					</span>
+					<br>
+					<?php echo $shipping_address ? wp_kses_post($shipping_address) : esc_html__('You have not set up a default shipping address yet.', 'woocommerce'); ?>
+				</address>
+			</div>
+
+			<?php
+			// 2. Additional Addresses
+			$additional_addresses = get_user_additional_shipping_addresses($customer_id);
+
+			if (!empty($additional_addresses)) {
+				foreach ($additional_addresses as $index => $address_data) {
+					// Normalize address data (remove shipping_ prefix for display)
+					$formatted_data = [];
+					foreach ($address_data as $key => $value) {
+						$clean_key = str_replace('shipping_', '', $key);
+						$formatted_data[$clean_key] = $value;
+					}
+
+					// Format address for display
+					$formatted_address = WC()->countries->get_formatted_address($formatted_data);
+					$set_default_url = wp_nonce_url(add_query_arg('set-default-address', $index), 'set_default_address_action');
+					$delete_url = wp_nonce_url(add_query_arg('delete-address', $index), 'delete_address_action');
+					$edit_url = add_query_arg('edit_addr_idx', $index);
+					?>
+					<div class="Address additional-address">
+
+						<address>
+
+
+							<div class="address-actions">
+								<header class="shipping-heaader-adress">
+
+									<?php
+									$address_type = isset($address_data['address_type']) && !empty($address_data['address_type']) ? $address_data['address_type'] : sprintf(esc_html__('Shipping Address #%d', 'woocommerce'), $index + 2);
+									echo esc_html($address_type);
+									?>
+								</header>
+								<div>
+									<a href="<?php echo esc_url($set_default_url); ?>" class="button set-default-btn">
+										<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+											stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+											<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+											<polyline points="22 4 12 14.01 9 11.01"></polyline>
+										</svg>
+
+									</a>
+									<a href="<?php echo esc_url($edit_url); ?>" class="button edit-btn">
+										<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+											stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+											<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+											<path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+										</svg>
+
+									</a>
+
+									<a href="<?php echo esc_url($delete_url); ?>" class="button delete-btn"
+										onclick="return confirm('Are you sure you want to delete this address?');">
+										<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+											stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+											<polyline points="3 6 5 6 21 6"></polyline>
+											<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+											</path>
+											<line x1="10" y1="11" x2="10" y2="17"></line>
+											<line x1="14" y1="11" x2="14" y2="17"></line>
+										</svg>
+
+									</a>
+
+								</div>
+
+							</div>
+
+							<?php echo wp_kses_post($formatted_address); ?>
+						</address>
+					</div>
+					<?php
+				}
+			}
+			?>
+		</div>
+
+		<?php
+		// Check for Edit Mode
+		$edit_index = isset($_GET['edit_addr_idx']) ? intval($_GET['edit_addr_idx']) : null;
+		$edit_data = ($edit_index !== null && isset($additional_addresses[$edit_index])) ? $additional_addresses[$edit_index] : [];
+		$is_editing = !empty($edit_data);
+		?>
+
+		<!-- Add New / Edit Address Button & Form (Popup) -->
+		<div class="wc-add-new-address-section">
+
+			<?php
+			// Get Default type
+			$all_used_types = [];
+			$default_type = get_user_meta(get_current_user_id(), 'shipping_address_type', true);
+			if ($default_type)
+				$all_used_types[] = $default_type;
+
+			foreach ($additional_addresses as $idx => $addr) {
+				if (isset($addr['address_type']))
+					$all_used_types[] = $addr['address_type'];
+			}
+			$all_used_types = array_unique($all_used_types);
+			$all_types_taken = (count($all_used_types) >= 3);
+			?>
+
+			<?php if (!$is_editing): ?>
+				<?php if ($all_types_taken): ?>
+					<p class="wc-all-types-taken-msg" style="margin-top: 20px; font-weight: 500; color: #666;">
+						<?php esc_html_e('All address types (Home, Work, Family) are already in use.', 'woocommerce'); ?>
+					</p>
+				<?php else: ?>
+					<button type="button" class="button" id="toggle-add-address-form">
+						<svg width="12" height="12" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M7 1V13M1 7H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+								stroke-linejoin="round" />
+						</svg>
+						<?php esc_html_e('Add New Shipping Address', 'woocommerce'); ?>
+					</button>
+				<?php endif; ?>
+			<?php endif; ?>
+
+			<!-- Modal Overlay -->
+			<div id="wc-address-modal-overlay" class="wc-address-modal-overlay <?php echo $is_editing ? 'active' : ''; ?>"
+				style="display: <?php echo $is_editing ? 'flex' : 'none'; ?>;">
+				<div class="wc-address-modal-content">
+					<button type="button" class="wc-modal-close-btn" id="close-address-modal">&times;</button>
+
+					<h3 class="sp-heaader-adress">
+						<?php echo $is_editing ? esc_html__('Edit Shipping Address', 'woocommerce') : esc_html__('Add New Shipping Address', 'woocommerce'); ?>
+					</h3>
+
+					<form method="post">
+						<div class="wc-address-form-fields">
+							<?php
+							// Identity which types are already used (including the default address)
+							$radio_used_types = [];
+							if ($default_type)
+								$radio_used_types[] = $default_type;
+
+							foreach ($additional_addresses as $idx => $addr) {
+								if ($is_editing && $edit_index === $idx)
+									continue;
+								if (isset($addr['address_type']))
+									$radio_used_types[] = $addr['address_type'];
+							}
+
+							$all_options = array(
+								'Home' => __('Home', 'woocommerce'),
+								'Work' => __('Work', 'woocommerce'),
+								'Family' => __('Family', 'woocommerce'),
+							);
+
+							// Filter out used types
+							foreach (array_unique($radio_used_types) as $type) {
+								if (isset($all_options[$type])) {
+									unset($all_options[$type]);
+								}
+							}
+
+							// Address Type Field - Radio
+							woocommerce_form_field('shipping_address_type', array(
+								'type' => 'radio',
+								'class' => array('form-row-wide address-type-radio-group'),
+								'label' => __('Address Type', 'woocommerce'),
+								'options' => $all_options,
+								'required' => true,
+							), isset($edit_data['address_type']) ? $edit_data['address_type'] : array_key_first($all_options));
+
+							$shipping_fields = WC()->countries->get_address_fields('', 'shipping_');
+							foreach ($shipping_fields as $key => $field) {
+								// Pre-fill value if editing
+								$clean_key = str_replace('shipping_', '', $key);
+								$val = isset($edit_data[$clean_key]) ? $edit_data[$clean_key] : '';
+
+								woocommerce_form_field($key, $field, $val);
+							}
+							?>
+						</div>
+						<p class="wc-address-form-actions">
+							<button type="submit" class="button" name="save_shipping_address"
+								value="1"><?php echo $is_editing ? esc_html__('Update Address', 'woocommerce') : esc_html__('Save Address', 'woocommerce'); ?></button>
+							<?php wp_nonce_field('save_shipping_address_action', 'shipping_nonce'); ?>
+							<?php if ($is_editing): ?>
+								<input type="hidden" name="edit_address_index" value="<?php echo esc_attr($edit_index); ?>" />
+							<?php endif; ?>
+							<button type="button" class="button cancel-btn"
+								id="cancel-address-modal"><?php esc_html_e('Cancel', 'woocommerce'); ?></button>
+						</p>
+					</form>
+				</div>
+			</div>
+
+			<script>
+				document.addEventListener('DOMContentLoaded', function () {
+					var modal = document.getElementById('wc-address-modal-overlay');
+					var openBtn = document.getElementById('toggle-add-address-form');
+					var closeBtn = document.getElementById('close-address-modal');
+					var cancelBtn = document.getElementById('cancel-address-modal');
+
+					// Open Modal
+					if (openBtn) {
+						openBtn.addEventListener('click', function () {
+							modal.style.display = 'flex';
+							document.body.classList.add('wc-modal-open');
+							setTimeout(function () {
+								modal.classList.add('active');
+								// Trigger WooCommerce address field initialization
+								if (typeof jQuery !== 'undefined') {
+									jQuery(document.body).trigger('country_to_state_changed');
+									jQuery(document.body).trigger('updated_checkout');
+									jQuery(document.body).trigger('wc_address_i18n_ready');
+								}
+							}, 10);
+						});
+					}
+
+					// Auto-open if editing (handled by PHP rendering 'active' class, but needs JS trigger too)
+					if (modal.classList.contains('active')) {
+						document.body.classList.add('wc-modal-open');
+						setTimeout(function () {
+							if (typeof jQuery !== 'undefined') {
+								jQuery(document.body).trigger('country_to_state_changed');
+								jQuery(document.body).trigger('updated_checkout');
+								jQuery(document.body).trigger('wc_address_i18n_ready');
+							}
+						}, 100);
+					}
+
+					// Close Modal Function
+					function closeModal() {
+						modal.classList.remove('active');
+						document.body.classList.remove('wc-modal-open');
+						setTimeout(function () { modal.style.display = 'none'; }, 300);
+
+						// If in edit mode (URL has params), redirect to clear them
+						if (window.location.search.indexOf('edit_addr_idx') > -1) {
+							var newUrl = window.location.href.split('?')[0];
+							window.location.href = newUrl; // Reload to clear edit state
+						}
+					}
+
+					if (closeBtn) closeBtn.addEventListener('click', closeModal);
+					if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+					// Close on outside click
+					window.addEventListener('click', function (e) {
+						if (e.target == modal) {
+							closeModal();
+						}
+					});
+				});
+			</script>
+		</div>
+
+		<script>
+			var toggleBtn = document.getElementById('toggle-add-address-form');
+			if (toggleBtn) {
+				toggleBtn.addEventListener('click', function () {
+					var form = document.getElementById('add-new-address-form');
+					if (form.style.display === 'none') {
+						form.style.display = 'block';
+					} else {
+						form.style.display = 'none';
+					}
+				});
+			}
+		</script>
+		</div>
+
+	<?php endif; ?>
+
+<?php else: ?>
+
+	<form method="post" novalidate>
+		<h2><?php echo apply_filters('woocommerce_my_account_edit_address_title', $page_title, $load_address); ?></h2>
+		<div class="woocommerce-address-fields">
+			<?php do_action("woocommerce_before_edit_address_form_{$load_address}"); ?>
+			<div class="woocommerce-address-fields__field-wrapper">
+				<?php
+				foreach ($address as $key => $field) {
+					woocommerce_form_field($key, $field, wc_get_post_data_by_key($key, $field['value']));
+				}
+				?>
+			</div>
+			<?php do_action("woocommerce_after_edit_address_form_{$load_address}"); ?>
+			<p>
+				<button type="submit"
+					class="button<?php echo esc_attr(wc_wp_theme_get_element_class_name('button') ? ' ' . wc_wp_theme_get_element_class_name('button') : ''); ?>"
+					name="save_address"
+					value="<?php esc_attr_e('Save address', 'woocommerce'); ?>"><?php esc_html_e('Save address', 'woocommerce'); ?></button>
+				<?php wp_nonce_field('woocommerce-edit_address', 'woocommerce-edit-address-nonce'); ?>
+				<input type="hidden" name="action" value="edit_address" />
+			</p>
+		</div>
+	</form>
+
+<?php endif; ?>
+
+<?php do_action('woocommerce_after_edit_account_address_form'); ?>
+
+Funxtion.php //
+
+			<?php
+			// 2. Additional Addresses
+			$additional_addresses = get_user_additional_shipping_addresses($customer_id);
+
+			if (!empty($additional_addresses)) {
+				foreach ($additional_addresses as $index => $address_data) {
+					// Normalize address data (remove shipping_ prefix for display)
+					$formatted_data = [];
+
+
+
+Fun
